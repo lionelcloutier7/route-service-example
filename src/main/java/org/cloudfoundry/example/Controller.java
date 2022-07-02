@@ -16,8 +16,11 @@
 
 package org.cloudfoundry.example;
 
+import static org.springframework.http.HttpHeaders.HOST;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -27,76 +30,91 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-
-import static org.springframework.http.HttpHeaders.HOST;
 
 @RestController
 final class Controller {
 
-    static final String FORWARDED_URL = "X-CF-Forwarded-Url";
+	static final String FORWARDED_URL = "X-CF-Forwarded-Url";
 
-    static final String PROXY_METADATA = "X-CF-Proxy-Metadata";
+	static final String FORWARDED_FOR = "X-Forwarded-For";
 
-    static final String PROXY_SIGNATURE = "X-CF-Proxy-Signature";
+	static final String FORWARDED_PORT = "X-Forwarded-Port";
 
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
+	static final String FORWARDED_PROTO = "X-Forwarded-Proto";
 
-    private final WebClient webClient;
+	static final String PROXY_METADATA = "X-CF-Proxy-Metadata";
 
-    Controller(WebClient webClient) {
-        this.webClient = webClient;
-    }
+	static final String PROXY_SIGNATURE = "X-CF-Proxy-Signature";
 
-    @RequestMapping(headers = {FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE})
-    Mono<ResponseEntity<Flux<DataBuffer>>> service(ServerHttpRequest request) {
+	@Value("${backend.url:http://localhost:8081}")
+	private static String defaultUrl = "http://localhost:8081";
 
-        this.logger.info("Incoming Request:  {}", formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
+	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-        String forwardedUrl = getForwardedUrl(request.getHeaders());
-        HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request.getHeaders());
+	private final WebClient webClient;
 
-        this.logger.info("Outgoing Request:  {}", formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
+	Controller(WebClient webClient) {
+		this.webClient = webClient;
+	}
 
-        return this.webClient
-            .method(request.getMethod())
-            .uri(forwardedUrl)
-            .headers(headers -> headers.putAll(forwardedHttpHeaders))
-            .body((outputMessage, context) -> outputMessage.writeWith(request.getBody()))
-            .exchange()
-            .map(response -> {
-                this.logger.info("Outgoing Response: {}", formatResponse(response.statusCode(), response.headers().asHttpHeaders()));
+	@RequestMapping(path = {"/**", "/"})
+	Mono<ResponseEntity<Flux<DataBuffer>>> service(ServerHttpRequest request) {
 
-                return ResponseEntity
-                    .status(response.statusCode())
-                    .headers(response.headers().asHttpHeaders())
-                    .body(response.bodyToFlux(DataBuffer.class));
-            });
-    }
+		this.logger.info("Incoming Request:  {}",
+				formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
 
-    private static String formatRequest(HttpMethod method, String uri, HttpHeaders headers) {
-        return String.format("%s %s, %s", method, uri, headers);
-    }
+		String forwardedUrl = getForwardedUrl(request);
+		HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request);
 
-    private static String getForwardedUrl(HttpHeaders httpHeaders) {
-        String forwardedUrl = httpHeaders.getFirst(FORWARDED_URL);
+		this.logger.info("Outgoing Request:  {}",
+				formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
 
-        if (forwardedUrl == null) {
-            throw new IllegalStateException(String.format("No %s header present", FORWARDED_URL));
-        }
+		return this.webClient.method(request.getMethod()).uri(forwardedUrl)
+				.headers(headers -> headers.putAll(forwardedHttpHeaders))
+				.body((outputMessage, context) -> outputMessage.writeWith(request.getBody())).exchange()
+				.map(response -> {
+					this.logger.info("Outgoing Response: {}",
+							formatResponse(response.statusCode(), response.headers().asHttpHeaders()));
 
-        return forwardedUrl;
-    }
+					return ResponseEntity.status(response.statusCode()).headers(response.headers().asHttpHeaders())
+							.body(response.bodyToFlux(DataBuffer.class));
+				});
+	}
 
-    private String formatResponse(HttpStatus statusCode, HttpHeaders headers) {
-        return String.format("%s, %s", statusCode, headers);
-    }
+	private static String formatRequest(HttpMethod method, String uri, HttpHeaders headers) {
+		return String.format("%s %s, %s", method, uri, headers);
+	}
 
-    private HttpHeaders getForwardedHeaders(HttpHeaders headers) {
-        return headers.entrySet().stream()
-            .filter(entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL) && !entry.getKey().equalsIgnoreCase(HOST))
-            .collect(HttpHeaders::new, (httpHeaders, entry) -> httpHeaders.addAll(entry.getKey(), entry.getValue()), HttpHeaders::putAll);
-    }
+	private static String getForwardedUrl(ServerHttpRequest request) {
+		HttpHeaders httpHeaders = request.getHeaders();
+		String forwardedUrl = httpHeaders.getFirst(FORWARDED_URL);
+
+		if (forwardedUrl == null) {
+			return defaultUrl + request.getPath();
+		}
+
+		return forwardedUrl;
+	}
+
+	private String formatResponse(HttpStatus statusCode, HttpHeaders headers) {
+		return String.format("%s, %s", statusCode, headers);
+	}
+
+	private HttpHeaders getForwardedHeaders(ServerHttpRequest request) {
+		HttpHeaders headers = request.getHeaders();
+		HttpHeaders responseHeaders = headers.entrySet().stream().filter(
+				entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL) && !entry.getKey().equalsIgnoreCase(HOST))
+				.collect(HttpHeaders::new, (httpHeaders, entry) -> httpHeaders.addAll(entry.getKey(), entry.getValue()),
+						HttpHeaders::putAll);
+		if (!responseHeaders.containsKey(FORWARDED_FOR) && headers.getHost() != null) {
+			responseHeaders.set(FORWARDED_FOR, "127.0.0.1");
+			responseHeaders.set(FORWARDED_PORT, "8080");
+			responseHeaders.set(FORWARDED_PROTO, "http");
+		}
+		return responseHeaders;
+	}
 
 }
