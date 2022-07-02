@@ -18,6 +18,8 @@ package org.cloudfoundry.example;
 
 import static org.springframework.http.HttpHeaders.HOST;
 
+import java.security.Principal;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +29,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -49,8 +52,13 @@ final class Controller {
 
 	static final String PROXY_SIGNATURE = "X-CF-Proxy-Signature";
 
-	@Value("${backend.url:http://localhost:8081}")
-	private static String defaultUrl = "http://localhost:8081";
+	static final String USER = "X-User";
+
+    @Value("${backend.url.legacy:http://localhost:8081}")
+    private static String defaultUrl = "http://localhost:8081";
+
+    @Value("${backend.url.shiny:http://localhost:8082}")
+    private static String shinyUrl = "http://localhost:8082";
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -60,14 +68,14 @@ final class Controller {
 		this.webClient = webClient;
 	}
 
-	@RequestMapping(path = {"/**", "/"})
-	Mono<ResponseEntity<Flux<DataBuffer>>> service(ServerHttpRequest request) {
+	@RequestMapping(path = { "/**", "/" })
+	Mono<ResponseEntity<Flux<DataBuffer>>> service(ServerHttpRequest request, Principal principal) {
 
 		this.logger.info("Incoming Request:  {}",
 				formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
 
 		String forwardedUrl = getForwardedUrl(request);
-		HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request);
+		HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request, principal);
 
 		this.logger.info("Outgoing Request:  {}",
 				formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
@@ -103,18 +111,22 @@ final class Controller {
 		return String.format("%s, %s", statusCode, headers);
 	}
 
-	private HttpHeaders getForwardedHeaders(ServerHttpRequest request) {
-		HttpHeaders headers = request.getHeaders();
-		HttpHeaders responseHeaders = headers.entrySet().stream().filter(
+	private HttpHeaders getForwardedHeaders(ServerHttpRequest request, Principal principal) {
+		HttpHeaders incoming = request.getHeaders();
+		HttpHeaders outgoing = incoming.entrySet().stream().filter(
 				entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL) && !entry.getKey().equalsIgnoreCase(HOST))
 				.collect(HttpHeaders::new, (httpHeaders, entry) -> httpHeaders.addAll(entry.getKey(), entry.getValue()),
 						HttpHeaders::putAll);
-		if (!responseHeaders.containsKey(FORWARDED_FOR) && headers.getHost() != null) {
-			responseHeaders.set(FORWARDED_FOR, "127.0.0.1");
-			responseHeaders.set(FORWARDED_PORT, "8080");
-			responseHeaders.set(FORWARDED_PROTO, "http");
+		if (!outgoing.containsKey(FORWARDED_FOR) && incoming.getHost() != null) {
+			outgoing.set(FORWARDED_FOR, "127.0.0.1");
+			outgoing.set(FORWARDED_PORT, "8080");
+			outgoing.set(FORWARDED_PROTO, "http");
 		}
-		return responseHeaders;
+		if (principal != null && !StringUtils.isEmpty(principal.getName())) {
+			// Downstream service can pick this app for authentication
+			outgoing.set(USER, principal.getName());
+		}
+		return outgoing;
 	}
 
 }

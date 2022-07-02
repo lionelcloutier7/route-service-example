@@ -67,6 +67,7 @@ public class RouteServiceApplication {
 		return chain;
 	}
 
+	@Bean
 	@Order(0)
 	public SecurityWebFilterChain basicSecurityFilterChain(ServerHttpSecurity http, WebClient.Builder builder) {
 		SecurityWebFilterChain chain = http
@@ -76,7 +77,8 @@ public class RouteServiceApplication {
 				.pathMatchers(HttpMethod.GET, "/**").permitAll() //
 				.anyExchange().authenticated() //
 				.and() //
-				.csrf().disable().httpBasic().authenticationManager(basicAuthenticationManager(builder)) //
+				.csrf().disable() //
+				.httpBasic().authenticationManager(basicAuthenticationManager(builder)) //
 				.and().build();
 		return chain;
 	}

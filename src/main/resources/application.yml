@@ -16,3 +16,7 @@ github:
   # See http://developer.github.com/v3/teams/members
   team:
     id: ${GITHUB_TEAM_ID:482984}
+
+logging:
+  level:
+    org.springframework.security: DEBUG
