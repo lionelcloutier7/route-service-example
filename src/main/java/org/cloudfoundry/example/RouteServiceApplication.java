@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationFailureHandler;
+import org.springframework.security.web.server.util.matcher.PathPatternParserServerWebExchangeMatcher;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.server.WebFilter;
 
@@ -46,10 +47,11 @@ public class RouteServiceApplication {
 	}
 
 	@Bean
-	@Order(0)
+	@Order(10)
 	public SecurityWebFilterChain oauth2SecurityFilterChain(ServerHttpSecurity http, WebClient.Builder builder) {
-		SecurityWebFilterChain chain = http.authorizeExchange() //
-				.pathMatchers("/admin/**").authenticated() //
+		SecurityWebFilterChain chain = http //
+				.authorizeExchange() //
+				.pathMatchers("/admin/**").authenticated().anyExchange().permitAll() //
 				.and() //
 				.oauth2Login().authenticationManager(authenticationManager(builder)) //
 				.and().build();
@@ -65,13 +67,14 @@ public class RouteServiceApplication {
 		return chain;
 	}
 
-	@Order(10)
+	@Order(0)
 	public SecurityWebFilterChain basicSecurityFilterChain(ServerHttpSecurity http, WebClient.Builder builder) {
-		SecurityWebFilterChain chain = http.authorizeExchange() //
-				.pathMatchers(HttpMethod.HEAD, "/project_metadata/**").permitAll() //
-				.pathMatchers(HttpMethod.GET, "/project_metadata/**").permitAll() //
-				.pathMatchers("/project_metadata/**").authenticated() //
-				.anyExchange().permitAll() //
+		SecurityWebFilterChain chain = http
+				.securityMatcher(new PathPatternParserServerWebExchangeMatcher("/project_metadata/**")) //
+				.authorizeExchange() //
+				.pathMatchers(HttpMethod.HEAD, "/**").permitAll() //
+				.pathMatchers(HttpMethod.GET, "/**").permitAll() //
+				.anyExchange().authenticated() //
 				.and() //
 				.csrf().disable().httpBasic().authenticationManager(basicAuthenticationManager(builder)) //
 				.and().build();
