@@ -18,6 +18,8 @@ package org.cloudfoundry.example;
 
 import static org.springframework.http.HttpHeaders.HOST;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.Principal;
 
 import org.slf4j.Logger;
@@ -29,10 +31,13 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
+import org.springframework.security.core.Authentication;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -55,10 +60,10 @@ final class Controller {
 	static final String USER = "X-User";
 
 	@Value("${backend.url.legacy:http://localhost:8081}")
-	private static String defaultUrl = "http://localhost:8081";
+	private String defaultUrl = "http://localhost:8081";
 
 	@Value("${backend.url.shiny:http://localhost:8082}")
-	private static String shinyUrl = "http://localhost:8082";
+	private String shinyUrl = "http://localhost:8082";
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -74,41 +79,72 @@ final class Controller {
 		this.logger.info("Incoming Request:  {}",
 				formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
 
-		String forwardedUrl = getForwardedUrl(request);
+		String[] forwardedUrls = getForwardedUrl(request, principal);
 		HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request, principal);
 
 		this.logger.info("Outgoing Request:  {}",
-				formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
+				formatRequest(request.getMethod(), forwardedUrls[0], forwardedHttpHeaders));
 
-		return this.webClient.method(request.getMethod()).uri(forwardedUrl)
+		return get(request, forwardedHttpHeaders, forwardedUrls[0]).onErrorResume(Exception.class, error -> {
+			this.logger.info("Retrying: {}", forwardedUrls[1]);
+			return get(request, forwardedHttpHeaders, forwardedUrls[1]).onErrorResume(ex -> {
+				return ex.toString().contains("Connection refused");
+			}, ex -> {
+				return Mono.just(ResponseEntity.notFound().build());
+			});
+		});
+	}
+
+	private Mono<ResponseEntity<Flux<DataBuffer>>> get(ServerHttpRequest request, HttpHeaders forwardedHttpHeaders,
+			String url) {
+		return this.webClient.method(request.getMethod()).uri(url)
 				.headers(headers -> headers.putAll(forwardedHttpHeaders))
 				.body((outputMessage, context) -> outputMessage.writeWith(request.getBody())).exchange()
-				.map(response -> {
-					this.logger.info("Outgoing Response: {}",
-							formatResponse(response.statusCode(), response.headers().asHttpHeaders()));
+				.map(this::respond);
+	}
 
-					return ResponseEntity.status(response.statusCode()).headers(response.headers().asHttpHeaders())
-							.body(response.bodyToFlux(DataBuffer.class));
-				}).onErrorResume(error -> {
-					return error.toString().contains("Connection refused");
-				}, error -> {
-				    return Mono.just(ResponseEntity.notFound().build());
-				});
+	private ResponseEntity<Flux<DataBuffer>> respond(ClientResponse response) {
+		this.logger.info("Outgoing Response: {}",
+				formatResponse(response.statusCode(), response.headers().asHttpHeaders()));
+
+		return ResponseEntity.status(response.statusCode()).headers(response.headers().asHttpHeaders())
+				.body(response.bodyToFlux(DataBuffer.class));
 	}
 
 	private static String formatRequest(HttpMethod method, String uri, HttpHeaders headers) {
 		return String.format("%s %s, %s", method, uri, headers);
 	}
 
-	private static String getForwardedUrl(ServerHttpRequest request) {
+	private String[] getForwardedUrl(ServerHttpRequest request, Principal principal) {
 		HttpHeaders httpHeaders = request.getHeaders();
 		String forwardedUrl = httpHeaders.getFirst(FORWARDED_URL);
+		String legacy = forwardedUrl;
+		String shiny = null;
 
 		if (forwardedUrl == null) {
-			return defaultUrl + request.getPath();
+			legacy = defaultUrl + request.getPath();
+			shiny = shinyUrl + request.getPath();
+		}
+		else {
+			try {
+				URI uri;
+				uri = new URI(shinyUrl);
+				int port = uri.getPort();
+				String host = uri.getHost();
+				shiny = UriComponentsBuilder.fromUriString(forwardedUrl).host(host).port(port).build().toUriString();
+			}
+			catch (URISyntaxException e) {
+				throw new IllegalStateException("Cannot parse URI: " + shinyUrl);
+			}
 		}
 
-		return forwardedUrl;
+		if (principal instanceof Authentication) {
+			Authentication authentication = (Authentication) principal;
+			if (authentication.isAuthenticated()) {
+				return new String[] { shiny, legacy };
+			}
+		}
+		return new String[] { legacy, shiny };
 	}
 
 	private String formatResponse(HttpStatus statusCode, HttpHeaders headers) {
