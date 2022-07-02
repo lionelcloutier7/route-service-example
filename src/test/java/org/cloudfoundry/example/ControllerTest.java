@@ -18,9 +18,9 @@ import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 import static org.springframework.http.MediaType.TEXT_PLAIN_VALUE;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.function.Consumer;
 
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -114,9 +114,8 @@ public final class ControllerTest {
 	}
 
 	@Test
-	@Ignore
 	public void incompleteRequest() {
-		this.webTestClient.head().uri("http://localhost/route-service/incomplete").exchange().expectStatus()
+		this.webTestClient.head().uri("http://localhost/project_metadata/spring-framework").exchange().expectStatus()
 				.isNotFound();
 	}
 
@@ -220,7 +219,8 @@ public final class ControllerTest {
 
 	@Autowired
 	void setWebApplicationContext(ApplicationContext applicationContext) {
-		this.webTestClient = WebTestClient.bindToApplicationContext(applicationContext).build();
+		this.webTestClient = WebTestClient.bindToApplicationContext(applicationContext).configureClient()
+				.responseTimeout(Duration.ofMinutes(10)).build();
 	}
 
 	private void expectRequest(Consumer<RecordedRequest> consumer) {

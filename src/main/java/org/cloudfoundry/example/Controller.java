@@ -54,11 +54,11 @@ final class Controller {
 
 	static final String USER = "X-User";
 
-    @Value("${backend.url.legacy:http://localhost:8081}")
-    private static String defaultUrl = "http://localhost:8081";
+	@Value("${backend.url.legacy:http://localhost:8081}")
+	private static String defaultUrl = "http://localhost:8081";
 
-    @Value("${backend.url.shiny:http://localhost:8082}")
-    private static String shinyUrl = "http://localhost:8082";
+	@Value("${backend.url.shiny:http://localhost:8082}")
+	private static String shinyUrl = "http://localhost:8082";
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -89,6 +89,10 @@ final class Controller {
 
 					return ResponseEntity.status(response.statusCode()).headers(response.headers().asHttpHeaders())
 							.body(response.bodyToFlux(DataBuffer.class));
+				}).onErrorResume(error -> {
+					return error.toString().contains("Connection refused");
+				}, error -> {
+				    return Mono.just(ResponseEntity.notFound().build());
 				});
 	}
 
