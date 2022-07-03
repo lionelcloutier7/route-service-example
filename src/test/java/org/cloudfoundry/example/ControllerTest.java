@@ -75,6 +75,27 @@ public final class ControllerTest {
 	}
 
 	@Test
+	public void getProjectMetadataRequest() {
+		String forwardedUrl = getForwardedUrl("/project_metadata/spring-framework");
+		prepareResponse(response -> response.setResponseCode(OK.value()).setHeader(CONTENT_TYPE, TEXT_PLAIN_VALUE)
+				.setBody(BODY_VALUE));
+
+		this.webTestClient.get().uri("http://localhost/project_metadata/spring-framework")
+				.header(FORWARDED_URL, forwardedUrl).header(PROXY_METADATA, PROXY_METADATA_VALUE)
+				.header(PROXY_SIGNATURE, PROXY_SIGNATURE_VALUE).exchange().expectStatus().isOk()
+				.expectBody(String.class).isEqualTo(BODY_VALUE);
+
+		expectRequest(request -> {
+			assertThat(request.getMethod()).isEqualTo(GET.name());
+			assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
+			assertThat(request.getHeader(FORWARDED_URL)).isNull();
+			assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
+			assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
+			assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
+		});
+	}
+
+	@Test
 	public void getRequest() {
 		String forwardedUrl = getForwardedUrl("/original/get");
 		prepareResponse(response -> response.setResponseCode(OK.value()).setHeader(CONTENT_TYPE, TEXT_PLAIN_VALUE)

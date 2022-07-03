@@ -32,6 +32,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -144,6 +145,10 @@ final class Controller {
 				return new String[] { shiny, legacy };
 			}
 		}
+		if (legacy.contains("/project_metadata/")) {
+			// Always try shiny new site first if looking for API content
+			return new String[] { shiny, legacy };
+		}
 		return new String[] { legacy, shiny };
 	}
 
@@ -164,7 +169,12 @@ final class Controller {
 		}
 		if (principal != null && !StringUtils.isEmpty(principal.getName())) {
 			// Downstream service can pick this app for authentication
-			outgoing.set(USER, principal.getName());
+			String login = principal.getName();
+			if (principal instanceof OAuth2AuthenticationToken) {
+				OAuth2AuthenticationToken token = (OAuth2AuthenticationToken) principal;
+				login = (String) token.getPrincipal().getAttributes().get("login");
+			}
+			outgoing.set(USER, login);
 		}
 		return outgoing;
 	}
