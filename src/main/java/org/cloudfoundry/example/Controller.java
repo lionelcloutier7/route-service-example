@@ -50,6 +50,8 @@ final class Controller {
 
 	static final String FORWARDED_FOR = "X-Forwarded-For";
 
+	static final String FORWARDED_HOST = "X-Forwarded-Host";
+
 	static final String FORWARDED_PORT = "X-Forwarded-Port";
 
 	static final String FORWARDED_PROTO = "X-Forwarded-Proto";
@@ -60,11 +62,11 @@ final class Controller {
 
 	static final String USER = "X-User";
 
-	@Value("${backend.url.legacy:http://localhost:8081}")
-	private String defaultUrl = "http://localhost:8081";
+	@Value("${backend.url.legacy:http://localhost:9000}")
+	private String defaultUrl = "http://localhost:9000";
 
-	@Value("${backend.url.shiny:http://localhost:8082}")
-	private String shinyUrl = "http://localhost:8082";
+	@Value("${backend.url.shiny:http://localhost:9001}")
+	private String shinyUrl = "http://localhost:9001";
 
 	private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -158,15 +160,31 @@ final class Controller {
 
 	private HttpHeaders getForwardedHeaders(ServerHttpRequest request, Principal principal) {
 		HttpHeaders incoming = request.getHeaders();
+		String forwardedUrl = incoming.getFirst(FORWARDED_URL);
+		String host = null;
+		if (forwardedUrl != null) {
+			try {
+				host = new URI(forwardedUrl).getHost();
+			}
+			catch (URISyntaxException e) {
+				throw new IllegalStateException("Cannot parse URI", e);
+			}
+		}
 		HttpHeaders outgoing = incoming.entrySet().stream().filter(
 				entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL) && !entry.getKey().equalsIgnoreCase(HOST))
 				.collect(HttpHeaders::new, (httpHeaders, entry) -> httpHeaders.addAll(entry.getKey(), entry.getValue()),
 						HttpHeaders::putAll);
 		if (!outgoing.containsKey(FORWARDED_FOR) && incoming.getHost() != null) {
-			outgoing.set(FORWARDED_FOR, "127.0.0.1");
 			outgoing.set(FORWARDED_PORT, "8080");
 			outgoing.set(FORWARDED_PROTO, "http");
+			if (host == null) {
+				host = "localhost";
+			}
 		}
+		if (host == null && incoming.getHost() != null) {
+			host = incoming.getHost().getHostName();
+		}
+		outgoing.set(FORWARDED_HOST, host);
 		if (principal != null && !StringUtils.isEmpty(principal.getName())) {
 			// Downstream service can pick this app for authentication
 			String login = principal.getName();

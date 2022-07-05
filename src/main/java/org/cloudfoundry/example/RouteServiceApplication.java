@@ -83,7 +83,7 @@ public class RouteServiceApplication {
 				.pathMatchers("/admin/**").authenticated().anyExchange().permitAll() //
 				.and() //
 				.oauth2Login().authenticationManager(authenticationManager(builder)) //
-				.and().build();
+				.and().csrf().disable().build();
 		for (WebFilter filter : chain.getWebFilters().collectList().block()) {
 			// TODO: replace this with a Spring Boot error handler for
 			// AuthenticationException
@@ -123,7 +123,8 @@ public class RouteServiceApplication {
 									if (!response.statusCode().is2xxSuccessful()) {
 										throw new BadCredentialsException("Wrong team");
 									}
-									return new UsernamePasswordAuthenticationToken(user.get("login"), "");
+									return new UsernamePasswordAuthenticationToken(user.get("login"),
+											authentication.getName());
 								});
 					});
 		};
