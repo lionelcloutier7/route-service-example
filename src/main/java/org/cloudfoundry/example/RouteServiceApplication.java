@@ -1,12 +1,18 @@
 package org.cloudfoundry.example;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.Map;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
@@ -34,6 +40,8 @@ public class RouteServiceApplication {
 
 	private static final String USER_URL = "https://api.github.com/user";
 
+	private final static Logger logger = LoggerFactory.getLogger(RouteServiceApplication.class);
+
 	@Value("${github.team.id}")
 	private String gitHubTeamId;
 
@@ -44,6 +52,27 @@ public class RouteServiceApplication {
 	@Bean
 	WebClient webClient() {
 		return WebClient.create();
+	}
+
+	@Bean
+	@Order(Ordered.HIGHEST_PRECEDENCE)
+	WebFilter pathFilter() {
+		return (exchange, chain) -> {
+			HttpHeaders httpHeaders = exchange.getRequest().getHeaders();
+			String forwardedUrl = httpHeaders.getFirst(Controller.FORWARDED_URL);
+			if (forwardedUrl != null) {
+				try {
+					URI uri = new URI(forwardedUrl);
+					logger.info("Forwarding: " + forwardedUrl);
+					exchange = exchange.mutate().request(request -> request.uri(uri)).build();
+				}
+				catch (URISyntaxException e) {
+					throw new IllegalStateException("Cannot parse forwarded URL", e);
+				}
+
+			}
+			return chain.filter(exchange);
+		};
 	}
 
 	@Bean
