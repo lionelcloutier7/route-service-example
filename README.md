@@ -1,6 +1,6 @@
 # Cloud Foundry Route Service Example
 
-This project is an example of a [Cloud Foundry Route Service][r] written with Spring Boot[b].  This application does the following to each request:
+This project is an example of a [Cloud Foundry Route Service][r] written with [Spring Boot][b].  This application does the following to each request:
 
 1. Intercepts an incoming request
 2. Logs information about that incoming request
@@ -61,7 +61,7 @@ The project is released under version 2.0 of the [Apache License][a].
 
 
 [a]: http://www.apache.org/licenses/LICENSE-2.0
-[b]: http://projects.spring.io/spring-boot/
+[b]: http://spring.io/projects/spring-boot/
 [c]: https://console.run.pivotal.io/register
 [i]: http://docs.run.pivotal.io/devguide/installcf/install-go-cli.html
 [j]: http://www.jetbrains.com/idea/

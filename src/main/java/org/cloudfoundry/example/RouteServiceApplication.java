@@ -24,7 +24,6 @@ import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
-
 @SpringBootApplication
 public class RouteServiceApplication {
 
