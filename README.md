@@ -38,18 +38,18 @@ $ cf logs route-service-example
 
 Finally, start making requests against your test application.  The route service's logs should start returning results that look similar to the following:
 ```text
-INFO  Incoming Request: <PATCH http://localhost/route-service/patch,[B@4f453e63,{X-CF-Forwarded-Url=[http://localhost/original/patch], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain], Content-Length=[9]}>
-INFO  Outgoing Request: <PATCH http://localhost/original/patch,[B@4f453e63,{X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain], Content-Length=[9]}>
-INFO  Incoming Request: <DELETE http://localhost/route-service/delete,{X-CF-Forwarded-Url=[http://localhost/original/delete], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}>
-INFO  Outgoing Request: <DELETE http://localhost/original/delete,{X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}>
-INFO  Incoming Request: <HEAD http://localhost/route-service/head,{X-CF-Forwarded-Url=[http://localhost/original/head], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}>
-INFO  Outgoing Request: <HEAD http://localhost/original/head,{X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}>
-INFO  Incoming Request: <PUT http://localhost/route-service/put,[B@12ffd1de,{X-CF-Forwarded-Url=[http://localhost/original/put], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain], Content-Length=[9]}>
-INFO  Outgoing Request: <PUT http://localhost/original/put,[B@12ffd1de,{X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain], Content-Length=[9]}>
-INFO  Incoming Request: <POST http://localhost/route-service/post,[B@9d3c67,{X-CF-Forwarded-Url=[http://localhost/original/post], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain], Content-Length=[9]}>
-INFO  Outgoing Request: <POST http://localhost/original/post,[B@9d3c67,{X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain], Content-Length=[9]}>
-INFO  Incoming Request: <GET http://localhost/route-service/get,{X-CF-Forwarded-Url=[http://localhost/original/get], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}>
-INFO  Outgoing Request: <GET http://localhost/original/get,{X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}>
+INFO  Incoming Request: PATCH http://localhost/route-service/patch, {WebTestClient-Request-Id=[1], X-CF-Forwarded-Url=[http://localhost:62998/original/patch], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain;charset=UTF-8], Content-Length=[9]}
+INFO  Outgoing Request: PATCH http://localhost:62998/original/patch, {WebTestClient-Request-Id=[1], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain;charset=UTF-8], Content-Length=[9]}
+INFO  Incoming Request: DELETE http://localhost/route-service/delete, {WebTestClient-Request-Id=[1], X-CF-Forwarded-Url=[http://localhost:63000/original/delete], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}
+INFO  Outgoing Request: DELETE http://localhost:63000/original/delete, {WebTestClient-Request-Id=[1], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}
+INFO  Incoming Request: HEAD http://localhost/route-service/head, {WebTestClient-Request-Id=[1], X-CF-Forwarded-Url=[http://localhost:63002/original/head], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}
+INFO  Outgoing Request: HEAD http://localhost:63002/original/head, {WebTestClient-Request-Id=[1], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}
+INFO  Incoming Request: PUT http://localhost/route-service/put, {WebTestClient-Request-Id=[1], X-CF-Forwarded-Url=[http://localhost:63004/original/put], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain;charset=UTF-8], Content-Length=[9]}
+INFO  Outgoing Request: PUT http://localhost:63004/original/put, {WebTestClient-Request-Id=[1], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain;charset=UTF-8], Content-Length=[9]}
+INFO  Incoming Request: POST http://localhost/route-service/post, {WebTestClient-Request-Id=[1], X-CF-Forwarded-Url=[http://localhost:63006/original/post], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain;charset=UTF-8], Content-Length=[9]}
+INFO  Outgoing Request: POST http://localhost:63006/original/post, {WebTestClient-Request-Id=[1], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature], Content-Type=[text/plain;charset=UTF-8], Content-Length=[9]}
+INFO  Incoming Request: GET http://localhost/route-service/get, {WebTestClient-Request-Id=[1], X-CF-Forwarded-Url=[http://localhost:63008/original/get], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}
+INFO  Outgoing Request: GET http://localhost:63008/original/get, {WebTestClient-Request-Id=[1], X-CF-Proxy-Metadata=[test-proxy-metadata], X-CF-Proxy-Signature=[test-proxy-signature]}
 ```
 
 ## Developing
