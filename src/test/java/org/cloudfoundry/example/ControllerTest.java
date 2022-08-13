@@ -25,6 +25,7 @@ import static org.cloudfoundry.example.Controller.FORWARDED_URL;
 import static org.cloudfoundry.example.Controller.PROXY_METADATA;
 import static org.cloudfoundry.example.Controller.PROXY_SIGNATURE;
 import static org.springframework.http.HttpHeaders.CONTENT_TYPE;
+import static org.springframework.http.HttpHeaders.HOST;
 import static org.springframework.http.HttpMethod.DELETE;
 import static org.springframework.http.HttpMethod.GET;
 import static org.springframework.http.HttpMethod.HEAD;
@@ -68,6 +69,7 @@ public final class ControllerTest {
             assertThat(request.getMethod()).isEqualTo(DELETE.name());
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
         });
@@ -94,6 +96,7 @@ public final class ControllerTest {
             assertThat(request.getMethod()).isEqualTo(GET.name());
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
         });
@@ -117,6 +120,7 @@ public final class ControllerTest {
             assertThat(request.getMethod()).isEqualTo(HEAD.name());
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
         });
@@ -156,6 +160,7 @@ public final class ControllerTest {
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(CONTENT_TYPE)).startsWith(MULTIPART_FORM_DATA_VALUE);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
             assertThat(request.getBody().readString(UTF_8)).contains("body-value");
@@ -184,6 +189,7 @@ public final class ControllerTest {
             assertThat(request.getMethod()).isEqualTo(PATCH.name());
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
             assertThat(request.getBody().readString(UTF_8)).isEqualTo(BODY_VALUE);
@@ -212,6 +218,7 @@ public final class ControllerTest {
             assertThat(request.getMethod()).isEqualTo(POST.name());
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
             assertThat(request.getBody().readString(UTF_8)).isEqualTo(BODY_VALUE);
@@ -240,6 +247,7 @@ public final class ControllerTest {
             assertThat(request.getMethod()).isEqualTo(PUT.name());
             assertThat(request.getRequestUrl().toString()).isEqualTo(forwardedUrl);
             assertThat(request.getHeader(FORWARDED_URL)).isNull();
+            assertThat(request.getHeader(HOST)).isEqualTo(getForwardedHost());
             assertThat(request.getHeader(PROXY_METADATA)).isEqualTo(PROXY_METADATA_VALUE);
             assertThat(request.getHeader(PROXY_SIGNATURE)).isEqualTo(PROXY_SIGNATURE_VALUE);
             assertThat(request.getBody().readString(UTF_8)).isEqualTo(BODY_VALUE);
@@ -258,6 +266,10 @@ public final class ControllerTest {
         } catch (InterruptedException ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    private String getForwardedHost() {
+        return String.format("%s:%d", this.mockWebServer.getHostName(), this.mockWebServer.getPort());
     }
 
     private String getForwardedUrl(String path) {

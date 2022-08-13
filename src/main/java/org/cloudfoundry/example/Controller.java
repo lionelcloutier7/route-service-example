@@ -29,6 +29,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import static org.springframework.http.HttpHeaders.HOST;
+
 @RestController
 final class Controller {
 
@@ -84,7 +86,7 @@ final class Controller {
 
     private HttpHeaders getForwardedHeaders(HttpHeaders headers) {
         return headers.entrySet().stream()
-            .filter(entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL))
+            .filter(entry -> !entry.getKey().equalsIgnoreCase(FORWARDED_URL) && !entry.getKey().equalsIgnoreCase(HOST))
             .collect(HttpHeaders::new, (httpHeaders, entry) -> httpHeaders.addAll(entry.getKey(), entry.getValue()), HttpHeaders::putAll);
     }
 
