@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -51,12 +52,12 @@ final class Controller {
     @RequestMapping(headers = {FORWARDED_URL, PROXY_METADATA, PROXY_SIGNATURE})
     Mono<ResponseEntity<Flux<DataBuffer>>> service(ServerHttpRequest request) {
 
-        this.logger.info("Incoming Request: {}", formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
+        this.logger.info("Incoming Request:  {}", formatRequest(request.getMethod(), request.getURI().toString(), request.getHeaders()));
 
         String forwardedUrl = getForwardedUrl(request.getHeaders());
         HttpHeaders forwardedHttpHeaders = getForwardedHeaders(request.getHeaders());
 
-        this.logger.info("Outgoing Request: {}", formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
+        this.logger.info("Outgoing Request:  {}", formatRequest(request.getMethod(), forwardedUrl, forwardedHttpHeaders));
 
         return this.webClient
             .method(request.getMethod())
@@ -64,10 +65,14 @@ final class Controller {
             .headers(headers -> headers.putAll(forwardedHttpHeaders))
             .body((outputMessage, context) -> outputMessage.writeWith(request.getBody()))
             .exchange()
-            .map(response -> ResponseEntity
-                .status(response.statusCode())
-                .headers(response.headers().asHttpHeaders())
-                .body(response.bodyToFlux(DataBuffer.class)));
+            .map(response -> {
+                this.logger.info("Outgoing Response: {}", formatResponse(response.statusCode(), response.headers().asHttpHeaders()));
+
+                return ResponseEntity
+                    .status(response.statusCode())
+                    .headers(response.headers().asHttpHeaders())
+                    .body(response.bodyToFlux(DataBuffer.class));
+            });
     }
 
     private static String formatRequest(HttpMethod method, String uri, HttpHeaders headers) {
@@ -82,6 +87,10 @@ final class Controller {
         }
 
         return forwardedUrl;
+    }
+
+    private String formatResponse(HttpStatus statusCode, HttpHeaders headers) {
+        return String.format("%s, %s", statusCode, headers);
     }
 
     private HttpHeaders getForwardedHeaders(HttpHeaders headers) {
